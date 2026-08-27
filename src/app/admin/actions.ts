@@ -63,8 +63,17 @@ export async function loginAction(
     return { error: "Contraseña incorrecta." };
   }
 
+  try {
+    await startSession();
+  } catch (err) {
+    console.error("startSession", err);
+    return {
+      error:
+        "No se pudo iniciar sesión. Revisa que ADMIN_SESSION_SECRET esté configurada en Vercel (mínimo 16 caracteres) y vuelve a desplegar.",
+    };
+  }
+
   attempts.delete(ip);
-  await startSession();
   redirect(next.startsWith("/admin") ? next : "/admin");
 }
 
