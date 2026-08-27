@@ -52,6 +52,13 @@ export async function loginAction(
   const password = String(formData.get("password") ?? "");
   const next = String(formData.get("next") ?? "/admin");
 
+  if (!process.env.ADMIN_PASSWORD?.trim()) {
+    return {
+      error:
+        "El servidor no tiene configurada la variable ADMIN_PASSWORD. Revísala en Vercel y vuelve a desplegar.",
+    };
+  }
+
   if (!checkPassword(password)) {
     return { error: "Contraseña incorrecta." };
   }

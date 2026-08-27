@@ -22,12 +22,14 @@ export async function requireAdmin(): Promise<void> {
 }
 
 export function checkPassword(input: string): boolean {
-  const expected = process.env.ADMIN_PASSWORD ?? "";
+  // Se recorta el valor del entorno: al pegar la variable en Vercel es fácil
+  // colar un espacio o salto de línea al final.
+  const expected = (process.env.ADMIN_PASSWORD ?? "").trim();
   if (!expected) {
     console.warn("[auth] ADMIN_PASSWORD sin configurar.");
     return false;
   }
-  const a = Buffer.from(input);
+  const a = Buffer.from(input.trim());
   const b = Buffer.from(expected);
   if (a.length !== b.length) return false;
   return timingSafeEqual(a, b);
