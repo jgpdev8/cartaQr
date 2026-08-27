@@ -18,11 +18,25 @@ function priceLabel(price: string | null): string {
 
 export default async function AdminHome() {
   await requireAdmin();
-  const menus = await listMenus();
   const today = todayInMadrid();
+
+  let menus: Awaited<ReturnType<typeof listMenus>> = [];
+  let dbError: string | null = null;
+  try {
+    menus = await listMenus();
+  } catch (err) {
+    dbError =
+      err instanceof Error ? `${err.message}\n${err.stack ?? ""}` : String(err);
+    console.error("AdminHome listMenus", err);
+  }
 
   return (
     <div>
+      {dbError && (
+        <pre className="mb-4 overflow-x-auto rounded-lg bg-red-50 p-3 text-xs text-red-800">
+          {dbError}
+        </pre>
+      )}
       <div className="mb-5 flex items-center justify-between">
         <h1 className="font-display text-2xl text-ink">Menús del día</h1>
         <Link
