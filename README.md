@@ -42,6 +42,7 @@ arrancar.
 | `ADMIN_PASSWORD` | Contraseña única del panel `/admin`. |
 | `ADMIN_SESSION_SECRET` | Secreto para firmar la cookie de sesión (`openssl rand -base64 32`). |
 | `NEXT_PUBLIC_SITE_URL` | URL pública del sitio; se usa en el QR y en las metaetiquetas. |
+| `BLOB_READ_WRITE_TOKEN` | Token de Vercel Blob para las fotos de los platos. Se añade solo al crear un almacén Blob en Vercel (*Storage → Create → Blob*). Sin él, el admin no puede subir fotos (el resto funciona igual). |
 
 ## Base de datos
 
