@@ -111,22 +111,41 @@ export function MenuEditor({
     setError(null);
     updateItem(key, { uploading: true });
     try {
-      let body: Blob = file;
+      let body: Blob | null = null;
       try {
         body = await downscaleImage(file);
       } catch {
-        // Si el navegador no puede procesar la imagen (p. ej. HEIC), se sube
-        // el archivo original si no es demasiado grande.
-        if (file.size > 8 * 1024 * 1024) {
-          throw new Error("La imagen es demasiado grande. Prueba con otra.");
+        // El navegador no ha podido procesar la imagen (p. ej. HEIC de iPhone).
+        body = null;
+      }
+      if (!body) {
+        if (file.type === "image/jpeg" || file.type === "image/png") {
+          body = file; // se sube tal cual
+        } else {
+          throw new Error(
+            "No se pudo procesar esa imagen. Haz una captura o guárdala como JPG/PNG.",
+          );
         }
       }
+      if (body.size > 4 * 1024 * 1024) {
+        throw new Error("La imagen es demasiado grande (máx. 4 MB).");
+      }
+
       const form = new FormData();
       form.append("file", body, "foto.jpg");
       const res = await fetch("/admin/upload", { method: "POST", body: form });
-      const data = (await res.json()) as { url?: string; error?: string };
+
+      let data: { url?: string; error?: string } = {};
+      try {
+        data = await res.json();
+      } catch {
+        /* respuesta no-JSON (p. ej. 413 de la plataforma) */
+      }
+      if (res.status === 413) {
+        throw new Error("La imagen es demasiado grande. Prueba con otra más ligera.");
+      }
       if (!res.ok || !data.url) {
-        throw new Error(data.error ?? "No se pudo subir la imagen.");
+        throw new Error(data.error ?? `No se pudo subir la imagen (${res.status}).`);
       }
       updateItem(key, { photoUrl: data.url, uploading: false });
     } catch (err) {

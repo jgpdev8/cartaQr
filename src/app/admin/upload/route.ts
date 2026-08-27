@@ -36,6 +36,11 @@ export async function POST(req: NextRequest) {
     return Response.json({ url });
   } catch (err) {
     console.error("upload", err);
-    return Response.json({ error: "No se pudo subir la imagen." }, { status: 500 });
+    const detail =
+      err instanceof Error ? err.message : "error desconocido";
+    return Response.json(
+      { error: `No se pudo subir la imagen: ${detail}` },
+      { status: 500 },
+    );
   }
 }
