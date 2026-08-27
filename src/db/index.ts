@@ -21,6 +21,15 @@ async function createDb(): Promise<DrizzleDb> {
     return drizzle(neon(url), { schema });
   }
 
+  // Sin DATABASE_URL solo se admite el modo local con PGlite. En un despliegue
+  // (Vercel u otro) esto es un fallo de configuración: hay que definir la
+  // variable de entorno DATABASE_URL.
+  if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+    throw new Error(
+      "Falta la variable de entorno DATABASE_URL (cadena de conexión de Neon).",
+    );
+  }
+
   // Desarrollo local sin Postgres: base de datos embebida PGlite.
   const { PGlite } = await import("@electric-sql/pglite");
   const { drizzle } = await import("drizzle-orm/pglite");

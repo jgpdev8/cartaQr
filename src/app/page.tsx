@@ -9,10 +9,21 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const today = todayInMadrid();
-  const todaysMenu = await getMenuForDate(today);
-  const menu =
-    todaysMenu && todaysMenu.published ? todaysMenu : await getLatestPublishedMenu();
-  const isStale = !(todaysMenu && todaysMenu.published) && menu !== null;
+
+  let menu = null;
+  let isStale = false;
+  try {
+    const todaysMenu = await getMenuForDate(today);
+    menu =
+      todaysMenu && todaysMenu.published
+        ? todaysMenu
+        : await getLatestPublishedMenu();
+    isStale = !(todaysMenu && todaysMenu.published) && menu !== null;
+  } catch (err) {
+    // Un problema de base de datos no debe tumbar la página pública:
+    // mostramos el estado "sin menú" y lo dejamos en los logs.
+    console.error("HomePage: error cargando el menú", err);
+  }
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8 sm:py-12">
