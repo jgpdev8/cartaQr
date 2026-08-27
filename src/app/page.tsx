@@ -1,69 +1,69 @@
 import Image from "next/image";
+import { getLatestPublishedMenu, getMenuForDate } from "@/lib/menus";
+import { todayInMadrid } from "@/lib/date";
+import { MenuView } from "@/components/menu-view";
+import { ALLERGENS } from "@/lib/allergens";
+import { CAFE_NAME, FOUNDATION_NAME } from "@/lib/site";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const today = todayInMadrid();
+  const todaysMenu = await getMenuForDate(today);
+  const menu =
+    todaysMenu && todaysMenu.published ? todaysMenu : await getLatestPublishedMenu();
+  const isStale = !(todaysMenu && todaysMenu.published) && menu !== null;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
+    <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8 sm:py-12">
+      <div className="mb-8 flex justify-center">
         <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
+          src="/logo.jpg"
+          alt={FOUNDATION_NAME}
+          width={300}
+          height={90}
           priority
+          className="h-auto w-52 sm:w-64"
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+      </div>
+
+      {menu ? (
+        <MenuView menu={menu} staleNotice={isStale} />
+      ) : (
+        <div className="rounded-2xl bg-surface p-8 text-center shadow-sm ring-1 ring-black/5">
+          <h1 className="font-display text-2xl text-ink">
+            Aún no hay menú publicado
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="mt-2 text-stone-dark">
+            Vuelve a consultar esta página más tarde para ver el menú del día de{" "}
+            {CAFE_NAME}.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      )}
+
+      {menu && (
+        <details className="mx-auto mt-6 max-w-2xl rounded-xl bg-surface px-5 py-3 text-sm shadow-sm ring-1 ring-black/5">
+          <summary className="cursor-pointer font-medium text-stone-dark">
+            Información sobre alérgenos
+          </summary>
+          <p className="mt-3 text-stone-dark">
+            Consulta al personal si necesitas información detallada sobre
+            alérgenos e intolerancias. Referencia de iconos:
+          </p>
+          <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3">
+            {ALLERGENS.map((a) => (
+              <li key={a.id} className="flex items-center gap-1.5 text-stone-dark">
+                <span aria-hidden>{a.icon}</span>
+                {a.label}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      <footer className="mt-10 text-center text-xs text-stone">
+        {CAFE_NAME} · {FOUNDATION_NAME}
+      </footer>
+    </main>
   );
 }

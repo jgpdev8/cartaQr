@@ -1,36 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Aspas Café — Carta web + panel admin
 
-## Getting Started
+Web pública que muestra el **menú del día** de Aspas Café (Fundación ASPAS), un
+pequeño **panel de administración** para configurarlo y una pantalla que genera
+el **código QR** que enlaza con la web.
 
-First, run the development server:
+- **Web pública:** `/`
+- **Panel admin:** `/admin` (protegido con una contraseña única)
+- **Código QR:** `/admin/qr`
+
+## Stack
+
+- Next.js 16 (App Router) + React 19 + TypeScript
+- Tailwind CSS v4
+- PostgreSQL con Drizzle ORM
+  - **Producción:** Neon (`DATABASE_URL`)
+  - **Desarrollo local:** [PGlite](https://pglite.dev) embebido en `./.pglite`
+    (no hace falta instalar Postgres)
+- `qrcode` para el QR, `jose` para la cookie de sesión del admin
+
+## Puesta en marcha (local)
 
 ```bash
+nvm use 20            # requiere Node 20.9+
+npm install
+cp .env.example .env.local   # ya incluido; revisa los valores
+npm run db:seed       # (opcional) carga un menú de ejemplo
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre <http://localhost:3000>. El panel está en
+<http://localhost:3000/admin> (contraseña por defecto en `.env.local`: `aspas`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Sin `DATABASE_URL` la app usa PGlite y crea las tablas automáticamente al
+arrancar.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Variables de entorno
 
-## Learn More
+| Variable | Descripción |
+|---|---|
+| `DATABASE_URL` | Cadena de conexión de Postgres (Neon). Vacía en local = PGlite. |
+| `ADMIN_PASSWORD` | Contraseña única del panel `/admin`. |
+| `ADMIN_SESSION_SECRET` | Secreto para firmar la cookie de sesión (`openssl rand -base64 32`). |
+| `NEXT_PUBLIC_SITE_URL` | URL pública del sitio; se usa en el QR y en las metaetiquetas. |
 
-To learn more about Next.js, take a look at the following resources:
+## Base de datos
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+El esquema está en `src/db/schema.ts`. Tras cambiarlo:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run db:generate         # genera la migración SQL en ./drizzle
+npm run db:migrate          # la aplica a la BD de DATABASE_URL (producción)
+```
 
-## Deploy on Vercel
+En local, PGlite aplica el DDL de `src/db/dev-bootstrap.ts` al arrancar (si
+cambias el esquema, actualiza también ese archivo y `scripts/seed-dev.mjs`).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Despliegue en Vercel
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Sube el repo a GitHub e impórtalo en Vercel.
+2. Crea una base de datos **Neon** (integración de Vercel o
+   [neon.tech](https://neon.tech), plan gratuito) y copia su cadena de conexión.
+3. En Vercel → *Settings → Environment Variables*, añade:
+   - `DATABASE_URL` = cadena de Neon (pooled)
+   - `ADMIN_PASSWORD` = la contraseña que usará el café
+   - `ADMIN_SESSION_SECRET` = `openssl rand -base64 32`
+   - `NEXT_PUBLIC_SITE_URL` = `https://<tu-proyecto>.vercel.app` (o el dominio propio)
+4. Aplica el esquema a Neon una vez:
+   ```bash
+   DATABASE_URL="<cadena-de-neon>" npm run db:migrate
+   ```
+5. Deploy. Entra en `/admin`, crea el menú del día y descarga el QR en
+   `/admin/qr`.
+
+## Notas
+
+- `npm audit` reporta una vulnerabilidad *moderate* de `esbuild` que llega solo
+  como dependencia de desarrollo de `drizzle-kit`; no afecta al código de
+  producción.
+- El bloque `BEGIN:nextjs-agent-rules` de `AGENTS.md` lo regenera `next dev`.
