@@ -28,6 +28,7 @@ export default async function EditMenuPage({
       name: it.name,
       description: it.description,
       allergens: it.allergens,
+      photoUrl: it.photoUrl,
     })),
   };
 

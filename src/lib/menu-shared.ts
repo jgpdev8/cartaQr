@@ -14,6 +14,7 @@ export type MenuItemInput = {
   name: string;
   description: string | null;
   allergens: string[];
+  photoUrl: string | null;
 };
 
 export type MenuInput = {
@@ -31,6 +32,7 @@ export type MenuItem = {
   name: string;
   description: string | null;
   allergens: string[];
+  photoUrl: string | null;
   position: number;
 };
 

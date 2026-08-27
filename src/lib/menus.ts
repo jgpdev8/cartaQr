@@ -1,8 +1,9 @@
 import "server-only";
-import { and, desc, eq, lte, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { menuItems, menus } from "@/db/schema";
 import { todayInMadrid } from "./date";
+import { deleteStoredPhotos } from "./blob";
 import type { Course, Menu, MenuInput, MenuSummary } from "./menu-shared";
 
 export {
@@ -32,6 +33,7 @@ function toMenu(
         name: it.name,
         description: it.description,
         allergens: it.allergens ?? [],
+        photoUrl: it.photoUrl,
         position: it.position,
       }))
       .sort((a, b) => a.position - b.position),
@@ -139,6 +141,11 @@ export async function saveMenu(input: MenuInput): Promise<string> {
   }
 
   // 3. Reemplazar los platos.
+  const previous = await db
+    .select({ photoUrl: menuItems.photoUrl })
+    .from(menuItems)
+    .where(eq(menuItems.menuId, menuId));
+
   await db.delete(menuItems).where(eq(menuItems.menuId, menuId));
   if (input.items.length > 0) {
     await db.insert(menuItems).values(
@@ -148,15 +155,43 @@ export async function saveMenu(input: MenuInput): Promise<string> {
         name: it.name,
         description: it.description,
         allergens: it.allergens,
+        photoUrl: it.photoUrl,
         position: index,
       })),
     );
   }
 
+  await cleanUpPhotos(
+    previous.map((p) => p.photoUrl).filter((u): u is string => !!u),
+  );
+
   return menuId;
+}
+
+/** Borra del almacén las fotos que ya no referencia ningún plato. */
+async function cleanUpPhotos(candidates: string[]): Promise<void> {
+  const unique = [...new Set(candidates)];
+  if (unique.length === 0) return;
+  const db = await getDb();
+  const stillUsed = new Set(
+    (
+      await db
+        .select({ photoUrl: menuItems.photoUrl })
+        .from(menuItems)
+        .where(inArray(menuItems.photoUrl, unique))
+    ).map((r) => r.photoUrl),
+  );
+  await deleteStoredPhotos(unique.filter((u) => !stillUsed.has(u)));
 }
 
 export async function deleteMenu(id: string): Promise<void> {
   const db = await getDb();
+  const photos = await db
+    .select({ photoUrl: menuItems.photoUrl })
+    .from(menuItems)
+    .where(eq(menuItems.menuId, id));
   await db.delete(menus).where(eq(menus.id, id));
+  await cleanUpPhotos(
+    photos.map((p) => p.photoUrl).filter((u): u is string => !!u),
+  );
 }

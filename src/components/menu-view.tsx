@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { COURSES, type Menu } from "@/lib/menu-shared";
 import { allergenIcon, allergenLabel } from "@/lib/allergens";
 import { capitalize, formatLongDate } from "@/lib/date";
@@ -55,30 +56,41 @@ export function MenuView({
                   {course.plural}
                 </span>
               </h2>
-              <ul className="mt-4 space-y-4">
+              <ul className="mt-4 space-y-5">
                 {items.map((item) => (
-                  <li key={item.id}>
-                    <p className="text-lg font-medium leading-snug text-ink">
-                      {item.name}
-                    </p>
-                    {item.description && (
-                      <p className="mt-0.5 font-display text-[0.95rem] italic text-stone">
-                        {item.description}
-                      </p>
+                  <li key={item.id} className="flex gap-3">
+                    {item.photoUrl && (
+                      <Image
+                        src={item.photoUrl}
+                        alt={item.name}
+                        width={112}
+                        height={112}
+                        className="h-20 w-20 flex-none rounded-lg object-cover ring-1 ring-black/10 sm:h-24 sm:w-24"
+                      />
                     )}
-                    {item.allergens.length > 0 && (
-                      <p className="mt-1.5 flex flex-wrap gap-1.5">
-                        {item.allergens.map((a) => (
-                          <span
-                            key={a}
-                            className="inline-flex items-center gap-1 rounded-full bg-paper px-2 py-0.5 text-xs text-stone-dark"
-                          >
-                            <span aria-hidden>{allergenIcon(a)}</span>
-                            {allergenLabel(a)}
-                          </span>
-                        ))}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-lg font-medium leading-snug text-ink">
+                        {item.name}
                       </p>
-                    )}
+                      {item.description && (
+                        <p className="mt-0.5 font-display text-[0.95rem] italic text-stone">
+                          {item.description}
+                        </p>
+                      )}
+                      {item.allergens.length > 0 && (
+                        <p className="mt-1.5 flex flex-wrap gap-1.5">
+                          {item.allergens.map((a) => (
+                            <span
+                              key={a}
+                              className="inline-flex items-center gap-1 rounded-full bg-paper px-2 py-0.5 text-xs text-stone-dark"
+                            >
+                              <span aria-hidden>{allergenIcon(a)}</span>
+                              {allergenLabel(a)}
+                            </span>
+                          ))}
+                        </p>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>

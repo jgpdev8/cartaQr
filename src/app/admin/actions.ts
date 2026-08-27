@@ -105,6 +105,15 @@ const itemSchema = z.object({
   allergens: z
     .array(z.string())
     .transform((arr) => arr.filter((a) => (ALLERGEN_IDS as string[]).includes(a))),
+  photoUrl: z
+    .string()
+    .trim()
+    .transform((v) => (v === "" ? null : v))
+    .nullable()
+    .refine(
+      (v) => v === null || /^https?:\/\//.test(v),
+      "URL de foto no válida.",
+    ),
 });
 
 const menuSchema = z.object({

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { COURSES, type Course, type MenuInput } from "@/lib/menu-shared";
 import { ALLERGENS } from "@/lib/allergens";
+import { downscaleImage } from "@/lib/image";
 import { saveMenuAction } from "../actions";
 
 type EditableItem = {
@@ -12,6 +13,8 @@ type EditableItem = {
   name: string;
   description: string;
   allergens: string[];
+  photoUrl: string | null;
+  uploading: boolean;
 };
 
 function toEditable(input: MenuInput): EditableItem[] {
@@ -21,6 +24,8 @@ function toEditable(input: MenuInput): EditableItem[] {
     name: it.name,
     description: it.description ?? "",
     allergens: it.allergens,
+    photoUrl: it.photoUrl ?? null,
+    uploading: false,
   }));
 }
 
@@ -41,10 +46,20 @@ export function MenuEditor({
   const [published, setPublished] = useState(initial.published);
   const [items, setItems] = useState<EditableItem[]>(toEditable(initial));
 
+  const anyUploading = items.some((it) => it.uploading);
+
   function addItem(course: Course) {
     setItems((prev) => [
       ...prev,
-      { key: crypto.randomUUID(), course, name: "", description: "", allergens: [] },
+      {
+        key: crypto.randomUUID(),
+        course,
+        name: "",
+        description: "",
+        allergens: [],
+        photoUrl: null,
+        uploading: false,
+      },
     ]);
   }
 
@@ -63,13 +78,8 @@ export function MenuEditor({
       const current = prev.find((it) => it.key === key);
       if (!current) return prev;
       const globalIdx = prev.findIndex((it) => it.key === key);
-      // Índice global del vecino del mismo course en la dirección pedida.
       let neighbour = -1;
-      for (
-        let i = globalIdx + dir;
-        i >= 0 && i < prev.length;
-        i += dir
-      ) {
+      for (let i = globalIdx + dir; i >= 0 && i < prev.length; i += dir) {
         if (prev[i].course === current.course) {
           neighbour = i;
           break;
@@ -97,6 +107,34 @@ export function MenuEditor({
     );
   }
 
+  async function uploadPhoto(key: string, file: File) {
+    setError(null);
+    updateItem(key, { uploading: true });
+    try {
+      let body: Blob = file;
+      try {
+        body = await downscaleImage(file);
+      } catch {
+        // Si el navegador no puede procesar la imagen (p. ej. HEIC), se sube
+        // el archivo original si no es demasiado grande.
+        if (file.size > 8 * 1024 * 1024) {
+          throw new Error("La imagen es demasiado grande. Prueba con otra.");
+        }
+      }
+      const form = new FormData();
+      form.append("file", body, "foto.jpg");
+      const res = await fetch("/admin/upload", { method: "POST", body: form });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        throw new Error(data.error ?? "No se pudo subir la imagen.");
+      }
+      updateItem(key, { photoUrl: data.url, uploading: false });
+    } catch (err) {
+      updateItem(key, { uploading: false });
+      setError(err instanceof Error ? err.message : "No se pudo subir la imagen.");
+    }
+  }
+
   function save() {
     setError(null);
     const cleanItems = items
@@ -105,6 +143,7 @@ export function MenuEditor({
         name: it.name.trim(),
         description: it.description.trim() || null,
         allergens: it.allergens,
+        photoUrl: it.photoUrl,
       }))
       .filter((it) => it.name.length > 0);
 
@@ -114,6 +153,10 @@ export function MenuEditor({
     }
     if (cleanItems.length === 0) {
       setError("Añade al menos un plato con nombre.");
+      return;
+    }
+    if (anyUploading) {
+      setError("Espera a que terminen de subirse las fotos.");
       return;
     }
 
@@ -137,6 +180,9 @@ export function MenuEditor({
     });
   }
 
+  const fieldClass =
+    "w-full rounded-lg border border-black/15 bg-white px-3 py-2 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30";
+
   return (
     <div className="space-y-6">
       <div className="rounded-xl bg-surface p-4 shadow-sm ring-1 ring-black/5 sm:p-6">
@@ -147,7 +193,7 @@ export function MenuEditor({
               type="date"
               value={serviceDate}
               onChange={(e) => setServiceDate(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
+              className={`mt-1 ${fieldClass}`}
             />
           </label>
           <label className="block">
@@ -160,7 +206,7 @@ export function MenuEditor({
               placeholder="p. ej. 12,50"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
+              className={`mt-1 ${fieldClass}`}
             />
           </label>
         </div>
@@ -173,7 +219,7 @@ export function MenuEditor({
             placeholder="p. ej. Incluye pan, bebida y café"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
+            className={`mt-1 ${fieldClass}`}
           />
         </label>
         <label className="mt-4 flex items-center gap-2">
@@ -224,7 +270,7 @@ export function MenuEditor({
                         onChange={(e) =>
                           updateItem(item.key, { name: e.target.value })
                         }
-                        className="flex-1 rounded-md border border-black/15 bg-white px-3 py-2 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
+                        className={`flex-1 ${fieldClass}`}
                       />
                       <div className="flex flex-col">
                         <button
@@ -255,6 +301,7 @@ export function MenuEditor({
                         ✕
                       </button>
                     </div>
+
                     <input
                       type="text"
                       placeholder="Descripción (opcional)"
@@ -262,8 +309,56 @@ export function MenuEditor({
                       onChange={(e) =>
                         updateItem(item.key, { description: e.target.value })
                       }
-                      className="mt-2 w-full rounded-md border border-black/15 bg-white px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
+                      className={`mt-2 text-sm ${fieldClass}`}
                     />
+
+                    {/* Foto del plato */}
+                    <div className="mt-3 flex items-center gap-3">
+                      {item.photoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.photoUrl}
+                          alt=""
+                          className="h-16 w-16 flex-none rounded-md object-cover ring-1 ring-black/10"
+                        />
+                      ) : (
+                        <div className="flex h-16 w-16 flex-none items-center justify-center rounded-md bg-paper text-2xl text-stone">
+                          🍽️
+                        </div>
+                      )}
+                      <div className="flex flex-wrap gap-2 text-sm">
+                        <label className="cursor-pointer rounded-md bg-brand-soft px-3 py-1.5 font-medium text-brand-dark hover:bg-brand/20">
+                          {item.uploading
+                            ? "Subiendo…"
+                            : item.photoUrl
+                              ? "Cambiar foto"
+                              : "Añadir foto"}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            disabled={item.uploading}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              e.target.value = "";
+                              if (f) uploadPhoto(item.key, f);
+                            }}
+                          />
+                        </label>
+                        {item.photoUrl && !item.uploading && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateItem(item.key, { photoUrl: null })
+                            }
+                            className="rounded-md px-3 py-1.5 text-red-600 hover:bg-red-50"
+                          >
+                            Quitar
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
                     <details className="mt-2 text-sm">
                       <summary className="cursor-pointer text-stone-dark">
                         Alérgenos
@@ -308,10 +403,14 @@ export function MenuEditor({
         <button
           type="button"
           onClick={save}
-          disabled={pending}
+          disabled={pending || anyUploading}
           className="rounded-lg bg-brand px-5 py-2.5 font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
         >
-          {pending ? "Guardando…" : mode === "new" ? "Crear menú" : "Guardar cambios"}
+          {pending
+            ? "Guardando…"
+            : mode === "new"
+              ? "Crear menú"
+              : "Guardar cambios"}
         </button>
         <button
           type="button"

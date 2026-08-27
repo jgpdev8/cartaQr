@@ -35,6 +35,7 @@ export default async function NewMenuPage({
           name: it.name,
           description: it.description,
           allergens: it.allergens,
+          photoUrl: it.photoUrl,
         })),
       };
     }

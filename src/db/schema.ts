@@ -35,6 +35,7 @@ export const menuItems = pgTable("menu_items", {
   name: text("name").notNull(),
   description: text("description"),
   allergens: text("allergens").array(),
+  photoUrl: text("photo_url"),
   position: integer("position").notNull().default(0),
 });
 

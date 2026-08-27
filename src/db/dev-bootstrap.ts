@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS "menu_items" (
   "name" text NOT NULL,
   "description" text,
   "allergens" text[],
+  "photo_url" text,
   "position" integer DEFAULT 0 NOT NULL
 );
 
@@ -29,5 +30,11 @@ DO $$ BEGIN
     FOREIGN KEY ("menu_id") REFERENCES "menus"("id") ON DELETE cascade;
 EXCEPTION
   WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "menu_items" ADD COLUMN "photo_url" text;
+EXCEPTION
+  WHEN duplicate_column THEN NULL;
 END $$;
 `;
